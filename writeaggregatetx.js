@@ -1,88 +1,94 @@
 const nem2Sdk = require("nem2-sdk");
-const crypto = require("crypto")
-const jssha3 = require('js-sha3')
-const sha3_512 = jssha3.sha3_512
-const rx = require('rxjs')
-const op = require('rxjs/operators')
-const request = require('request');
-const fs = require('fs');
+const progress = require("multi-progress");
+const fs = require("fs");
+const multi = new progress(process.stderr);
 
-const Address = nem2Sdk.Address,
-    Deadline = nem2Sdk.Deadline,
-    Account = nem2Sdk.Account,
-    UInt64 = nem2Sdk.UInt64,
-    NetworkType = nem2Sdk.NetworkType,
-    PlainMessage = nem2Sdk.PlainMessage,
-    TransferTransaction = nem2Sdk.TransferTransaction,
-    Mosaic = nem2Sdk.Mosaic,
-    MosaicId = nem2Sdk.MosaicId,
-    TransactionHttp = nem2Sdk.TransactionHttp,
-    AccountHttp = nem2Sdk.AccountHttp,
-    MosaicHttp = nem2Sdk.MosaicHttp,
-    NamespaceHttp = nem2Sdk.NamespaceHttp,
-    MosaicService = nem2Sdk.MosaicService,
-    XEM = nem2Sdk.XEM,
-    AggregateTransaction = nem2Sdk.AggregateTransaction,
-    PublicAccount = nem2Sdk.PublicAccount,
-    LockFundsTransaction = nem2Sdk.LockFundsTransaction,
-    Listener = nem2Sdk.Listener,
-    CosignatureTransaction = nem2Sdk.CosignatureTransaction,
-    SecretLockTransaction = nem2Sdk.SecretLockTransaction,
-    SecretProofTransaction = nem2Sdk.SecretProofTransaction,
-    HashType = nem2Sdk.HashType,
-    ModifyMultisigAccountTransaction = nem2Sdk.ModifyMultisigAccountTransaction,
-    MultisigCosignatoryModificationType = nem2Sdk.MultisigCosignatoryModificationType,
-    MultisigCosignatoryModification = nem2Sdk.MultisigCosignatoryModification,
-    TransactionType = nem2Sdk.TransactionType;
+// Parameters
+const numTxs = parseInt(process.argv[3]) || 10000;
+const numInnerTxs = process.argv[4] || 1000;
+const file = process.argv[2] || "aggregate/payload0001.txt";
 
-const privateKeys = require('./nemesiskeys.json');
+if (!fs.existsSync("aggregate")) {
+  fs.mkdirSync("aggregate");
+}
+
+const bars = [];
+
+const Deadline = nem2Sdk.Deadline,
+  Account = nem2Sdk.Account,
+  NetworkType = nem2Sdk.NetworkType,
+  PlainMessage = nem2Sdk.PlainMessage,
+  TransferTransaction = nem2Sdk.TransferTransaction,
+  XEM = nem2Sdk.XEM,
+  AggregateTransaction = nem2Sdk.AggregateTransaction;
+
+const config = require("./config.json");
+const privateKeys = config.PRIVATE_KEYS;
 
 function getRandomInt(max) {
-    return Math.floor(Math.random() * Math.floor(max));
+  return Math.floor(Math.random() * Math.floor(max));
 }
 
 function createAggregate() {
-    const privateKey = privateKeys[getRandomInt(privateKeys.length)];
-    const account = Account.createFromPrivateKey(privateKey, NetworkType.MIJIN_TEST);
-    
-    let innerTxs = [];
-    const num = process.argv[3] || 1000;
-        
-    for (let i = 0; i < num; i++) {
-        if (i % 500 == 0) {
-            console.log(`${i}th inner tx created`);
-        }
-        const recipient = Account.generateNewAccount(NetworkType.MIJIN_TEST).address;
-        const amount = getRandomInt(10);
-        const transferTransaction = TransferTransaction.create(
-            Deadline.create(),
-            recipient,
-            [XEM.createRelative(amount)],
-            PlainMessage.create(amount),
-            NetworkType.MIJIN_TEST,
-        );
-        innerTxs.push(transferTransaction.toAggregate(account.publicAccount));
-    }
-    
-    const aggregateTransaction = AggregateTransaction.createComplete(
-        Deadline.create(23),
-        innerTxs,
-        NetworkType.MIJIN_TEST,
-        []
+  const privateKey = privateKeys[getRandomInt(privateKeys.length)];
+  const account = Account.createFromPrivateKey(privateKey, NetworkType.MIJIN_TEST);
+
+  let innerTxs = [];
+
+  for (let i = 0; i < numInnerTxs; i++) {
+    const privateKey2 = privateKeys[getRandomInt(privateKeys.length)];
+    const recipient = Account.createFromPrivateKey(privateKey2, NetworkType.MIJIN_TEST).address;
+    const amount = getRandomInt(10);
+    const transferTransaction = TransferTransaction.create(
+      Deadline.create(),
+      recipient,
+      [XEM.createRelative(amount)],
+      PlainMessage.create(amount),
+      NetworkType.MIJIN_TEST
     );
-    return signedTransaction = account.sign(aggregateTransaction);
+    innerTxs.push(transferTransaction.toAggregate(account.publicAccount));
+    if (i % 10 == 0) {
+      updateBar(0, 10);
+    }
+  }
+  updateBar(0, numInnerTxs / -1);
+
+  const aggregateTransaction = AggregateTransaction.createComplete(
+    Deadline.create(23),
+    innerTxs,
+    NetworkType.MIJIN_TEST,
+    []
+  );
+  return account.sign(aggregateTransaction);
 }
 
-const file = process.argv[2] || "aggregate/payload0001.txt";
+// Create progress bars
+bars[0] = multi.newBar(
+  "Generating inner transactions: [:bar] :percent | :current/:total", {
+    complete: "=",
+    incomplete: " ",
+    width: 30,
+    total: numInnerTxs
+  });
+bars[0].tick(0);
+bars[1] = multi.newBar(
+  "Generating aggregate transactions: [:bar] :percent | :current/:total", {
+    complete: "=",
+    incomplete: " ",
+    width: 30,
+    total: numTxs
+  });
+bars[1].tick(0);
 
-if (!fs.existsSync('aggregate')) {
-    fs.mkdirSync('aggregate');
-};
+// Run generator
+for (let i = 0; i < numTxs; i++) {
+  const tx = createAggregate();
+  fs.appendFileSync(file, tx.payload + "\n", (err) => {
+    if (err) throw err;
+  });
+  updateBar(1, 1);
+}
 
-for (let i = 0; i < 4*15*50; i++) {
-    console.log(`${i}th aggregate tx`)
-    const tx = createAggregate();
-    fs.appendFile(file, tx.payload + '\n', (err) => {
-        if (err) throw err;
-    });
+function updateBar(pid, currentTotal){
+  bars[pid].tick(currentTotal);
 }

@@ -35,12 +35,12 @@ docker-compose -f docker-compose-with-explorer.yml up -d
 ### clone this repository
 
 ```
-git clone https://github.com/planethouki/yonsen.git
+git clone https://github.com/jontey/yonsen.git
 cd yonsen
 npm install
 ```
 
-### create `nemesiskeys.json` from `addresses.yaml`.
+### create `config.json` from `addresses.yaml`.
 
 
 ```
@@ -48,41 +48,35 @@ cat ../build/generated-addresses/addresses.yaml
 vi nemesiskeys.json
 ```
 
-extract some of `nemesis_addresses.private` and put json array.
-
-This is example of `nemesiskeys.json`.
-
-```
-[
-    "1947340C6102E18927B98D49FB4A7947AB0C5AFCDB31F34F7EA85209A2252CF2",
-    "1627E64F23841C748DB9B1650ADFEC8868003158D7803A0652FE76FBD2D617B0",
-    "2D280ADE3C870B2AD6B962DE191743C763823EC07E897846E5398546E9D69EC7",
-    "354AF480EE43126FDC3DD11FD0F6537647F8413B7676536DFFFC671F850DF8A4",
-    "<and more>"
-]
-```
+extract some of `nemesis_addresses.private` and place into `config.json`.
 
 ### send instant transaction
 
 1 transfer transaction
 
 ```
-npm run send1
+node test.js
 ```
 
 500 transfer transaction
 
 ```
-npm run send500
+node test.js 500
 ```
 
 ### prepare and send huge amount of transactions
 
+Send transfer transaction format
+```
+node writetx.js [transactions per process] [number of processes to spawn]
+node sendtx.js [tps] [number of processes to spawn]
+```
+
 8 * 320,000 transfer transactions
 
 ```
-npm run create32
-npm run send32
+node writetx.js 320000 8
+node sendtx.js 1000 8
 ```
 
 3,000 aggregate complete transactions within 1,000 inner transactions

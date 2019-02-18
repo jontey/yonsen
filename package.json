@@ -4,20 +4,14 @@
   "description": "",
   "main": "test.js",
   "scripts": {
-    "send1": "node test.js 1",
-    "send500": "node test.js 500",
-    "send32": "node sendtx320000-8.js",
-    "send10": "node sendtx100000-30.js",
-    "create32": "node writetx320000-8.js",
-    "create10": "node writetx100000-30.js",
-    "view": "node blockchain.js",
-    "createag": "ndoe writeaggregatetx.js",
-    "sendag": "node sendaggregatetx.js"
+    "view": "node blockchain.js"
   },
   "author": "planethouki",
   "license": "Apache-2.0",
   "dependencies": {
+    "eslint": "^5.14.0",
     "loadtest": "^3.0.4",
+    "multi-progress": "^2.0.0",
     "nem2-sdk": "^0.10.1",
     "request": "^2.88.0"
   }
