@@ -6,7 +6,7 @@ const multi = new progress(process.stderr);
 // Parameters
 const file = process.argv[2] || "aggregate/payload0001.txt";
 const numTxs = parseInt(process.argv[3]) || 10000;
-const numInnerTxs = process.argv[4] || 1000;
+const numInnerTxs = parseInt(process.argv[4]) || 1000;
 
 if (!fs.existsSync("aggregate")) {
   fs.mkdirSync("aggregate");
