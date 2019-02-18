@@ -82,8 +82,8 @@ node sendtx.js 1000 8
 3,000 aggregate complete transactions within 1,000 inner transactions
 
 ```
-npm run createag
-npm run sendag
+node writeaggregatetx.js aggregate/payload0001.txt 3000 1000
+node sendaggregatetx.js aggregate/payload0001.txt
 ```
 
 ### count number of transactions
